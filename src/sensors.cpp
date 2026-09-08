@@ -4,24 +4,36 @@
 
 DHTesp dht_t1;
 DHTesp dht_t2;
-
 TempAndHumidity data1;
 TempAndHumidity data2;
 bool dhtOk = false;
 
 int gasBaseline = 0;
 int gasThreshold = 0;
-
 unsigned long lastMotionPK = 0;
 unsigned long lastMotionCT = 0;
 
 static unsigned long lastDhtRead = 0;
 static unsigned long bootTime = 0;
-
 static bool prevPirPK = false;
 static bool prevPirCT = false;
 static int  pirPKHighCount = 0;
 static int  pirCTHighCount = 0;
+
+// EMA Filter State cho Gas
+static float emaGasValue = 0.0;
+const float EMA_ALPHA = 0.2; // Hệ số lọc nhiễu (0.0 - 1.0)
+
+// --- HÀM OVERSAMPLING CHUẨN CÔNG NGHIỆP ---
+// Đọc ADC nhiều lần và lấy trung bình để loại bỏ nhiễu điện áp (ADC Noise)
+static int readADC_Oversampled(int pin, int samples = 16) {
+  long sum = 0;
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(pin);
+    delayMicroseconds(100); // Chờ tụ ADC hồi phục
+  }
+  return sum / samples;
+}
 
 void setupSensors() {
   pinMode(PIN_PIR_PK, INPUT_PULLDOWN);
@@ -40,17 +52,16 @@ void setupSensors() {
 void calibrateGasSensor(LiquidCrystal_I2C &lcd) {
   lcd.clear();
   lcd.setCursor(0, 0); lcd.print("Calibrating Gas...");
-  long sum = 0;
-  const int N = 15;
-  for (int i = 0; i < N; i++) {
-    sum += analogRead(PIN_MQ2);
-    delay(100);
-  }
-  gasBaseline = sum / N;
+  
+  // Lấy mẫu oversampling lúc boot để làm baseline chuẩn
+  int initialReading = readADC_Oversampled(PIN_MQ2, 32); 
+  gasBaseline = initialReading;
   gasThreshold = gasBaseline + GAS_MARGIN;
+  emaGasValue = gasBaseline; // Khởi tạo EMA
+  
   lcd.setCursor(0, 1);
   lcd.printf("Base:%d Thr:%d", gasBaseline, gasThreshold);
-  Serial.println("[GAS] Bien do nen=" + String(gasBaseline) + " Nguong canh bao=" + String(gasThreshold) + " Nguong tat=" + String(gasThreshold - GAS_HYSTERESIS));
+  Serial.println("[GAS] Base=" + String(gasBaseline) + " | Thr=" + String(gasThreshold));
   delay(1500);
 }
 
@@ -64,19 +75,36 @@ void readDHTIfDue() {
   }
 }
 
-int readGasRaw()   { return analogRead(PIN_MQ2); }
-int readLightRaw() { return analogRead(PIN_LDR); }
-bool readFlame()   { return digitalRead(PIN_FLAME) == LOW; }
-
-float readCurrentA() {
-  int acsRaw = analogRead(PIN_ACS712);
-  float acsVoltageAtPin = (acsRaw / 4095.0) * 3.3;
-  float acsVoltageAtSensor = acsVoltageAtPin * DIVIDER_RATIO;
-  float currentA = (acsVoltageAtSensor - ACS712_ZERO_VOLTAGE) / ACS712_SENSITIVITY;
-  return fabs(currentA);
+// Trả về giá trị đã lọc EMA, không trả về raw ADC nữa
+int readGasRaw() {
+  int rawADC = readADC_Oversampled(PIN_MQ2, 16);
+  
+  if (emaGasValue == 0.0) emaGasValue = rawADC;
+  emaGasValue = (EMA_ALPHA * rawADC) + ((1.0 - EMA_ALPHA) * emaGasValue);
+  
+  return (int)emaGasValue;
 }
 
-// Gom chung logic debounce PIR (truoc day lap lai y het cho PK va CT)
+int readLightRaw() { 
+  return readADC_Oversampled(PIN_LDR, 8); 
+}
+
+bool readFlame() { 
+  return digitalRead(PIN_FLAME) == LOW; 
+}
+
+float readCurrentA() {
+  // ACS712 cần oversampling cao hơn vì nhiễu dòng điện rất lớn
+  int rawADC = readADC_Oversampled(PIN_ACS712, 32); 
+  
+  float acsVoltageAtPin = (rawADC / 4095.0) * 3.3;
+  float acsVoltageAtSensor = acsVoltageAtPin * DIVIDER_RATIO;
+  float currentA = (acsVoltageAtSensor - ACS712_ZERO_VOLTAGE) / ACS712_SENSITIVITY;
+
+  // Chuẩn thực tế: Dòng điện âm là do offset, trả về 0.0
+  return (currentA < 0.0) ? 0.0 : currentA; 
+}
+
 static bool debouncedPir(int pin, int &highCount, bool &prevState, const char *label) {
   bool settled = (millis() - bootTime > PIR_SETTLE_MS);
   bool raw = digitalRead(pin) == HIGH;

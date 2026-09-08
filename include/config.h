@@ -1,11 +1,9 @@
 #pragma once
-
 // ============================================================================
 // CONFIG.H - Cau hinh chan (pin), nguong (threshold) va hang so he thong
-// Gom tat ca "so ma thuat" (magic number) vao 1 cho de de chinh sua/giai trinh
 // ============================================================================
 
-// ---------- PERCEPTION LAYER: CHAN CAM BIEN & CHAP HANH ----------
+// ---------- PERCEPTION LAYER ----------
 const int PIN_DHT_T1     = 15;
 const int PIN_DHT_T2     = 16;
 const int PIN_PIR_PK     = 13;
@@ -27,23 +25,19 @@ const int PIN_RELAY_CT   = 26;
 const int PIN_RELAY_PN   = 14;
 const int PIN_RELAY_SAN  = 12;
 
-// Wokwi: module relay ao kich hoat muc HIGH.
-// Lap mach that (da so module relay xanh/do la Active-LOW): doi 2 dong duoi day.
 #define RELAY_ON  HIGH
 #define RELAY_OFF LOW
 
-// ---------- EDGE PROCESSING LAYER: NGUONG XU LY ----------
+// ---------- EDGE PROCESSING LAYER ----------
 const int   GAS_MARGIN            = 600;
 const int   GAS_HYSTERESIS        = 300;
 const float CURRENT_THRESHOLD_A   = 10.0;
 const float ACS712_SENSITIVITY    = 0.100;
 const float ACS712_ZERO_VOLTAGE   = 1.65;
-const float DIVIDER_RATIO         = 1.0;   // Mach that: doi thanh 2.0 (cau phan ap 10k/10k)
-
-const int LDR_ON_THRESHOLD        = 2000;  // Wokwi: LDR nguoc, gia tri CAO = TROI TOI
-const int LDR_OFF_THRESHOLD       = 1000;  // Gia tri THAP = TROI SANG
+const float DIVIDER_RATIO         = 1.0;
+const int LDR_ON_THRESHOLD        = 2000;
+const int LDR_OFF_THRESHOLD       = 1000;
 const unsigned long LDR_CONFIRM_TIME_MS = 3000;
-
 const int PIR_DEBOUNCE_COUNT      = 2;
 
 // ---------- TIMING ----------
@@ -55,17 +49,16 @@ const unsigned long PIR_SETTLE_MS               = 15000;
 const unsigned long MOTION_HOLD_MS              = 5000;
 
 // ---------- NETWORK LAYER: MQTT TOPICS ----------
-#define TOPIC_TEMP_HUM     "smarthome/sensor/temp_hum"
-#define TOPIC_GAS          "smarthome/sensor/gas"
-#define TOPIC_LIGHT        "smarthome/sensor/light"
-#define TOPIC_MOTION_PK    "smarthome/sensor/motion_pk"
-#define TOPIC_MOTION_CT    "smarthome/sensor/motion_ct"
-#define TOPIC_DOOR         "smarthome/sensor/door"
-#define TOPIC_CURRENT      "smarthome/sensor/current"
-#define TOPIC_ALARM        "smarthome/alarm"
-#define TOPIC_RFID_LOG     "smarthome/rfid/log"
-#define TOPIC_STATUS       "smarthome/status"
-
+#define TOPIC_TEMP_HUM      "smarthome/sensor/temp_hum"
+#define TOPIC_GAS           "smarthome/sensor/gas"
+#define TOPIC_LIGHT         "smarthome/sensor/light"
+#define TOPIC_MOTION_PK     "smarthome/sensor/motion_pk"
+#define TOPIC_MOTION_CT     "smarthome/sensor/motion_ct"
+#define TOPIC_DOOR          "smarthome/sensor/door"
+#define TOPIC_CURRENT       "smarthome/sensor/current"
+#define TOPIC_ALARM         "smarthome/alarm"
+#define TOPIC_RFID_LOG      "smarthome/rfid/log"
+#define TOPIC_STATUS        "smarthome/status"
 #define TOPIC_RELAY_STATE_PK  "smarthome/relay/pk/state"
 #define TOPIC_RELAY_STATE_BEP "smarthome/relay/bep/state"
 #define TOPIC_RELAY_STATE_CT  "smarthome/relay/ct/state"
@@ -73,3 +66,4 @@ const unsigned long MOTION_HOLD_MS              = 5000;
 #define TOPIC_RELAY_STATE_SAN "smarthome/relay/san/state"
 #define TOPIC_RELAY_CMD       "smarthome/relay/+/set"
 #define TOPIC_LOCK_CMD        "smarthome/lock/set"
+#define TOPIC_RFID_MANAGE     "smarthome/rfid/manage"
